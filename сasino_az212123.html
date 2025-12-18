@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AZOK LEGACY</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #111;
+            --gold: #d4af37;
+            --gold-light: #f3cf7a;
+            --green: #2ecc71;
+            --red: #e74c3c;
+            --text: #e0e0e0;
+            --card-w: 60px;
+            --card-h: 88px;
+        }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; font-family: 'Roboto', sans-serif; }
+        body { background: #000; margin: 0; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #fff; }
+
+        /* --- VISUALS --- */
+        #noise-bg { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.05; pointer-events:none; background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MDAiIGhlaWdodD0iNTAwIj48ZmlsdGVyIGlkPSJnoiPjxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIwLjY1IiBudW1PY3RhdmVzPSIzIiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI24pIiBvcGFjaXR5PSIwLjUiLz48L3N2Zz4='); }
+        
+        #app-shell {
+            width: 100%; max-width: 500px; height: 100%; max-height: 900px;
+            background: #0e0e10; position: relative; overflow: hidden;
+            display: flex; flex-direction: column; z-index: 10;
+            box-shadow: 0 0 100px #000;
+        }
+        @media(min-width:600px){ #app-shell{height:95vh; border-radius:20px; border:1px solid #333;} }
+
+        /* --- SCREENS --- */
+        .screen { position: absolute; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); z-index:10; }
+        .screen.active { transform:translateY(0); z-index:20; }
+        
+        /* --- HEADER --- */
+        .top-hud {
+            height: 60px; background: rgba(20,20,20,0.95); border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 15px;
+            flex-shrink: 0; z-index: 100;
+        }
+        .user-pill { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px; }
+        .avatar { width: 32px; height: 32px; background: var(--gold); color:#000; border-radius: 8px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(212,175,55,0.4); }
+        .bal-display { font-family: monospace; font-size: 18px; color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,0.3); font-weight: bold; }
+        .back-btn { background: #333; color: #fff; border: 1px solid #555; width: 35px; height: 35px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        /* --- STAGE --- */
+        .stage { flex: 1; position: relative; width: 100%; overflow: hidden; background: #08080a; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* --- CONTROLS --- */
+        .controls {
+            background: #111; padding: 15px; border-top: 1px solid #333; z-index: 100; flex-shrink: 0;
+            display: flex; flex-direction: column; gap: 12px; padding-bottom: 25px;
+        }
+        .bet-info { display: flex; justify-content: space-between; font-size: 12px; color: #777; font-weight: bold; text-transform: uppercase; }
+        .val { color: #fff; }
+
+        .chips-rack { display: flex; gap: 10px; overflow-x: auto; padding: 5px; scrollbar-width: none; justify-content: center;}
+        .chip {
+            flex: 0 0 55px; height: 55px; border-radius: 50%; background: #1a1a1a;
+            border: 4px dashed #555; box-shadow: 0 4px 5px rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; color: #aaa; cursor: pointer;
+            transition: transform 0.1s; position: relative;
+        }
+        .chip:active { transform: scale(0.9); }
+        .chip.c-50 { border-color: var(--green); color: var(--green); }
+        .chip.c-100 { border-color: #3498db; color: #3498db; }
+        .chip.c-500 { border-color: #9b59b6; color: #9b59b6; }
+        .chip.c-1k { background: var(--gold); border: 2px solid #fff; color: #000; text-shadow: none; border-style: solid; }
+        .chip.c-clear { border-color: var(--red); color: var(--red); font-size: 16px; }
+
+        .btn-xl {
+            width: 100%; padding: 18px; border-radius: 12px; border: none;
+            background: linear-gradient(180deg, var(--gold), #b8860b);
+            color: #000; font-size: 20px; font-weight: 900; letter-spacing: 1px;
+            box-shadow: 0 5px 0 #7f5f00; cursor: pointer; transition: 0.1s;
+            text-transform: uppercase;
+        }
+        .btn-xl:active { transform: translateY(3px); box-shadow: 0 2px 0 #7f5f00; }
+        .btn-xl:disabled { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;}
+        .btn-sub { flex:1; background:#333; color:#fff; border:1px solid #555; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer;}
+
+        /* --- MENU --- */
+        #menu-screen .stage { display: block; overflow-y: auto; padding: 20px; }
+        .hero { text-align: center; margin-bottom: 30px; animation: float 6s infinite ease-in-out; }
+        .hero h1 { font-size: 50px; margin: 0; font-style: italic; background: linear-gradient(#fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero span { color: var(--gold); letter-spacing: 5px; font-size: 12px; font-weight: bold; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+        .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .card {
+            height: 120px; background: linear-gradient(145deg, #222, #181818);
+            border: 1px solid #333; border-radius: 16px; position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; overflow: hidden;
+        }
+        .card:active { transform: scale(0.96); border-color: var(--gold); }
+        .card.hot { border-color: var(--red); background: linear-gradient(145deg, #2a1010, #111); }
+        .badge { position: absolute; top:8px; right:8px; background: var(--red); font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .icon { font-size: 40px; margin-bottom: 5px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+        .name { font-size: 12px; font-weight: 800; color: #ccc; text-transform: uppercase; }
+
+        /* --- AVIATOR (CANVAS) --- */
+        #av-canvas { width: 100%; height: 100%; }
+        .av-ui { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; }
+        .av-mult { 
+            position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
+            font-size: 70px; font-weight: 900; color: #fff; font-family: monospace; 
+            text-shadow: 0 0 30px rgba(255,255,255,0.2);
+        }
+        .av-hist { position: absolute; top:10px; right:10px; display: flex; gap: 5px; }
+        .pill { padding: 3px 8px; background: #222; border-radius: 4px; font-size: 10px; font-weight: bold; color: #aaa; border: 1px solid #333; }
+        .pill.win { color: var(--green); border-color: var(--green); } .pill.big { background: var(--gold); color: #000; }
+        .av-bets { position: absolute; top:10px; left:10px; width: 140px; display:flex; flex-direction:column; gap:2px; }
+        .bet-row { background: rgba(0,0,0,0.6); padding: 3px 5px; font-size: 10px; color: #888; border-radius: 4px; display:flex; justify-content:space-between; }
+        .bet-row.me { border-left: 2px solid var(--gold); color: #fff; background: rgba(212,175,55,0.1); }
+        .bet-row.cash { color: var(--green); }
+
+        /* --- TABLE GAMES (BET SPOTS) --- */
+        .table-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; position: relative; perspective: 1000px; }
+        
+        /* CHIP STACK ON TABLE */
+        .bet-spot {
+            width: 80px; height: 80px; border: 2px dashed rgba(255,255,255,0.1); border-radius: 50%;
+            position: absolute; bottom: 20px; z-index: 5; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; cursor: pointer;
+        }
+        .bet-spot:active { transform: scale(0.95); }
+        .bet-spot.active { border-color: var(--gold); background: rgba(212,175,55,0.1); }
+        .spot-label { position: absolute; bottom: -20px; width: 100%; text-align: center; font-size: 10px; font-weight: bold; color: var(--gold); }
+        
+        .stacked-chip {
+            position: absolute; width: 45px; height: 45px; border-radius: 50%;
+            background: #222; border: 3px dashed #fff; color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none;
+            animation: chipDrop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes chipDrop { from { transform: translateY(-100px) scale(1.5); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+        /* --- CARDS --- */
+        .hand { display: flex; justify-content: center; gap: -10px; min-height: 100px; margin-top: 10px; }
+        .playing-card {
+            width: var(--card-w); height: var(--card-h); position: relative; transform-style: preserve-3d;
+            transition: transform 0.5s; opacity: 0; margin: 0 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .playing-card.dealt { opacity: 1; }
+        .playing-card.flipped { transform: rotateY(180deg); }
+        
+        .c-front, .c-back {
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .c-back { background: repeating-linear-gradient(45deg, #900, #900 5px, #600 5px, #600 10px); border: 2px solid #eee; }
+        .c-front { background: #fff; transform: rotateY(180deg); color: #000; font-weight: 900; font-size: 20px; }
+        .playing-card.red .c-front { color: var(--red); }
+        .suit-lg { font-size: 28px; line-height: 1; }
+
+        .score-box { background: #111; padding: 2px 10px; border-radius: 10px; border: 1px solid #333; font-size: 11px; margin-bottom: 5px; display: inline-block; color: #888; }
+        .score-box.active { border-color: var(--gold); color: var(--gold); }
+
+        /* --- SLOTS --- */
+        .slot-body { 
+            width: 320px; padding: 15px; background: linear-gradient(#222, #111); 
+            border: 4px solid var(--gold); border-radius: 15px; position: relative; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+        .reels-win { 
+            display: flex; gap: 5px; height: 140px; overflow: hidden; background: #000; 
+            border-radius: 8px; border: 2px solid #333; position: relative;
+        }
+        .reels-win::after { content:''; position:absolute; inset:0; box-shadow: inset 0 0 20px #000; pointer-events: none; z-index: 5; }
+        .col { flex: 1; position: relative; }
+        .strip { position: absolute; top: -1400px; left: 0; width: 100%; will-change: transform; }
+        .sym { 
+            height: 140px; display: flex; align-items: center; justify-content: center; 
+            font-size: 60px; background: #fff; border-bottom: 1px solid #ccc;
+        }
+        .payline { position: absolute; top:50%; left:0; width:100%; height:2px; background:rgba(255,0,0,0.7); z-index:10; }
+
+        /* --- ROULETTE --- */
+        .wheel-container { width: 280px; height: 280px; position: relative; border-radius: 50%; border: 8px solid var(--gold); box-shadow: 0 0 40px #000; margin-bottom: 20px; flex-shrink: 0;}
+        .wheel { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(var(--green) 0deg 9.7deg, #111 9.7deg 19.4deg, var(--red) 19.4deg 29.1deg, #111 29.1deg 38.8deg, var(--red) 38.8deg 48.5deg, #111 48.5deg 58.2deg, var(--red) 58.2deg 67.9deg, #111 67.9deg 77.6deg, var(--red) 77.6deg 87.3deg, #111 87.3deg 97deg, var(--red) 97deg 106.7deg, #111 106.7deg 116.4deg, var(--red) 116.4deg 126.1deg, #111 126.1deg 135.8deg, var(--red) 135.8deg 145.5deg, #111 145.5deg 155.2deg, var(--red) 155.2deg 164.9deg, #111 164.9deg 174.6deg, var(--red) 174.6deg 184.3deg, #111 184.3deg 194deg, var(--red) 194deg 203.7deg, #111 203.7deg 213.4deg, var(--red) 213.4deg 223.1deg, #111 223.1deg 232.8deg, var(--red) 232.8deg 242.5deg, #111 242.5deg 252.2deg, var(--red) 252.2deg 261.9deg, #111 261.9deg 271.6deg, var(--red) 271.6deg 281.3deg, #111 281.3deg 291deg, var(--red) 291deg 300.7deg, #111 300.7deg 310.4deg, var(--red) 310.4deg 320.1deg, #111 320.1deg 329.8deg, var(--red) 329.8deg 339.5deg, #111 339.5deg 349.2deg, var(--red) 349.2deg 360deg); transition: transform 4s cubic-bezier(0.1, 0, 0.1, 1); }
+        .arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); border-top: 25px solid #fff; border-left: 10px solid transparent; border-right: 10px solid transparent; z-index: 5; filter: drop-shadow(0 2px 2px #000);}
+
+        /* --- TOAST --- */
+        #toast { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); background: #111; border: 1px solid var(--gold); padding: 12px 30px; border-radius: 30px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 2000; font-weight: bold; white-space: nowrap; box-shadow: 0 0 20px var(--gold-light); }
+        #toast.show { opacity: 1; top: 100px; }
+        
+        .hidden { display: none !important; }
+        .act-group { display: flex; gap: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div id="noise-bg"></div>
+<div id="app-shell">
+    <div id="toast">Повідомлення</div>
+
+    <div id="scr-menu" class="screen active">
+        <div class="top-hud">
+            <div class="user-pill"><div class="avatar">U</div><div>GRAVETS</div></div>
+            <div class="bal-display">₴ <span class="u-bal">0</span></div>
+        </div>
+        <div class="stage">
+            <div class="hero"><h1>AZOK</h1><span>LEGACY</span></div>
+            <div class="g-grid">
+                <div class="card hot" onclick="Nav.to('aviator')">
+                    <div class="badge">LIVE</div><div class="icon">🚀</div><div class="name">Aviator</div>
+                </div>
+                <div class="card" onclick="Nav.to('slots')"><div class="icon">🎰</div><div class="name">Slots</div></div>
+                <div class="card" onclick="Nav.to('roulette')"><div class="icon">🎡</div><div class="name">Roulette</div></div>
+                <div class="card" onclick="Nav.to('blackjack')"><div class="icon">♠️</div><div class="name">Blackjack</div></div>
+                <div class="card" onclick="Nav.to('poker')"><div class="icon">🃏</div><div class="name">Poker</div></div>
+                <div class="card" onclick="Core.addMoney()"><div class="icon">💰</div><div class="name">+1000</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-aviator" class="screen">
+        <div class="top-hud"><button class="back-btn" onclick="Nav.menu()">⬅</button><div class="bal-display">₴ <span class="u-bal">0</span></div></div>
+        <div class="stage" style="background:#0b0b0d">
+            <canvas id="av-canvas"></canvas>
+            <div class="av-ui">
+                <div class="av-mult" id="av-mult">1.00x</div>
+                <div class="av-hist" id="av-hist"></div>
+                <div class="av-bets" id="av-list"></div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="bet-info"><span>СТАВКА: <span id="av-bet-val">0</span></span><span>LIVE</span></div>
+            <div class="chips-rack" id="av-chips"></div>
+            <div class="act-group">
+                <button class="btn-sub" style="flex:0 0 60px;" onclick="Bet.reset()">✕</button>
+                <button class="btn-xl" id="av-btn" onclick="Av.act()">СТАВКА</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-slots" class="screen">
+        <div class="top-hud"><button class="back-btn" onclick="Nav.menu()">⬅</button><div class="bal-display">₴ <span class="u-bal">0</span></div></div>
+        <div class="stage">
+            <div class="slot-body">
+                <div class="reels-win">
+                    <div class="col"><div class="strip" id="rs1"></div></div>
+                    <div class="col"><div class="strip" id="rs2"></div></div>
+                    <div class="col"><div class="strip" id="rs3"></div></div>
+                </div>
+                <div class="payline"></div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="bet-info"><span>ЦІНА СПІНА</span><span>50 ₴</span></div>
+            <button class="btn-xl" id="sl-btn" onclick="Slots.spin()">КРУТИТИ</button>
+        </div>
+    </div>
+
+    <div id="scr-blackjack" class="screen">
+        <div class="top-hud"><button class="back-btn" onclick="Nav.menu()">⬅</button><div class="bal-display">₴ <span class="u-bal">0</span></div></div>
+        <div class="stage" style="background:radial-gradient(#1e3c28, #000);">
+            <div style="width:100%; text-align:center; padding-top:20px;">
+                <div class="score-box" id="bj-ds">0</div>
+                <div class="hand" id="bj-dh"></div>
+            </div>
+            <div style="margin-top:auto; width:100%; text-align:center; padding-bottom:100px; position:relative;">
+                <div class="hand" id="bj-ph"></div>
+                <div class="score-box active" id="bj-ps">0</div>
+                <div class="bet-spot" id="bj-spot" onclick="Bet.returnChip('bj')">
+                    <div class="spot-label">BET</div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="chips-rack" id="bj-chips"></div>
+            <button class="btn-xl" id="bj-deal" onclick="BJ.deal()">РОЗДАТИ</button>
+            <div class="act-group hidden" id="bj-acts">
+                <button class="btn-xl" style="background:var(--red)" onclick="BJ.stand()">СТОП</button>
+                <button class="btn-xl" style="background:var(--green)" onclick="BJ.hit()">ЩЕ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-poker" class="screen">
+        <div class="top-hud"><button class="back-btn" onclick="Nav.menu()">⬅</button><div class="bal-display">₴ <span class="u-bal">0</span></div></div>
+        <div class="stage" style="background:radial-gradient(#2c3e50, #000);">
+            <div style="text-align:center; padding-top:20px;">
+                <div style="font-size:10px; color:#aaa;">DEALER</div>
+                <div class="hand" id="pk-dh"></div>
+            </div>
+            <div style="text-align:center; margin:10px 0;">
+                <div style="font-size:10px; color:var(--gold);">TABLE</div>
+                <div class="hand" id="pk-th"></div>
+            </div>
+            <div style="margin-top:auto; text-align:center; padding-bottom:100px; position:relative;">
+                <div class="hand" id="pk-ph"></div>
+                <div class="score-box active" id="pk-hint">...</div>
+                <div class="bet-spot" id="pk-spot" onclick="Bet.returnChip('pk')">
+                    <div class="spot-label">BET</div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="chips-rack" id="pk-chips"></div>
+            <button class="btn-xl" id="pk-deal" onclick="PK.deal()">РОЗДАТИ</button>
+            <div class="act-group hidden" id="pk-acts">
+                <button class="btn-sub" onclick="PK.fold()">ПАС</button>
+                <button class="btn-xl" onclick="PK.call()">КОЛЛ (x2)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scr-roulette" class="screen">
+        <div class="top-hud"><button class="back-btn" onclick="Nav.menu()">⬅</button><div class="bal-display">₴ <span class="u-bal">0</span></div></div>
+        <div class="stage">
+            <div class="wheel-container"><div class="wheel" id="rl-wheel"></div><div class="arrow"></div></div>
+            <div class="act-group" style="width:280px; margin-top:20px;">
+                <button class="btn-sub" style="background:var(--red); border:none;" onclick="Rl.sel('red')">RED</button>
+                <button class="btn-sub" style="background:var(--green); border:none;" onclick="Rl.sel('green')">0</button>
+                <button class="btn-sub" style="background:#000; border:none;" onclick="Rl.sel('black')">BLK</button>
+            </div>
+            <div class="bet-spot" id="rl-spot" onclick="Bet.returnChip('rl')" style="bottom:auto; margin-top:20px; position:relative;">
+                <div class="spot-label">BET</div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="chips-rack" id="rl-chips"></div>
+            <button class="btn-xl" onclick="Rl.spin()">ГРАТИ</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* === SOUND SYSTEM (AudioContext) === */
+const Snd = {
+    ctx: new (window.AudioContext||window.webkitAudioContext)(),
+    play: (t)=>{
+        if(Snd.ctx.state==='suspended')Snd.ctx.resume();
+        let o=Snd.ctx.createOscillator(), g=Snd.ctx.createGain(), now=Snd.ctx.currentTime;
+        o.connect(g); g.connect(Snd.ctx.destination);
+        if(t==='click'){o.frequency.setValueAtTime(600,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.1);o.start(now);o.stop(now+0.1);}
+        if(t==='chip'){let n=Snd.ctx.createBufferSource(),b=Snd.ctx.createBuffer(1,22050*0.05,22050),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;n.buffer=b;let f=Snd.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=800;n.connect(f);f.connect(g);g.gain.exponentialRampToValueAtTime(0.01,now+0.1);n.start(now);}
+        if(t==='win'){o.type='triangle';o.frequency.setValueAtTime(400,now);o.frequency.linearRampToValueAtTime(800,now+0.2);g.gain.linearRampToValueAtTime(0,now+0.5);o.start(now);o.stop(now+0.5);}
+    }
+};
+
+/* === CORE ENGINE === */
+const Core = {
+    bal: 1000, bet: 0,
+    init: ()=>{
+        let s=localStorage.getItem('azok_legacy'); if(s) Core.bal=parseInt(s);
+        Core.upd(); Core.chips();
+    },
+    upd: ()=>{
+        document.querySelectorAll('.u-bal').forEach(e=>e.innerText=Core.bal);
+        ['av','bj','pk','rl'].forEach(k=>{let e=document.getElementById(k+'-bet-val');if(e)e.innerText=Core.bet});
+        localStorage.setItem('azok_legacy', Core.bal);
+    },
+    toast: (m)=>{let t=document.getElementById('toast');t.innerText=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)},
+    chips: ()=>{
+        let h=`<div class="chip c-50" onclick="Bet.add(50)">50</div><div class="chip c-100" onclick="Bet.add(100)">100</div><div class="chip c-500" onclick="Bet.add(500)">500</div><div class="chip c-1k" onclick="Bet.add(1000)">1K</div><div class="chip c-clear" onclick="Bet.reset()">✕</div>`;
+        document.querySelectorAll('.chips-rack').forEach(e=>e.innerHTML=h);
+    },
+    addMoney: ()=>{Core.bal+=1000;Core.upd();Snd.play('win');Core.toast("+1000 ₴")}
+};
+
+const Bet = {
+    add: (v)=>{
+        if(Core.bal>=v){
+            Core.bal-=v; Core.bet+=v; Core.upd(); Snd.play('chip');
+            // Visual Chip
+            let cur = document.querySelector('.screen.active').id.split('-')[1];
+            if(['blackjack','poker','roulette'].includes(cur)){
+                let s=document.getElementById(cur.substring(0,2)+'-spot');
+                s.classList.add('active');
+                let c=document.createElement('div'); c.className='stacked-chip';
+                c.style.background = v>=1000?'var(--gold)':(v>=500?'#9b59b6':(v>=100?'#3498db':'var(--green)'));
+                c.innerText=v;
+                // Random pos
+                c.style.left=(Math.random()*10+15)+'px'; c.style.top=(Math.random()*10+15)+'px';
+                s.appendChild(c);
+            }
+        } else Core.toast("Мало грошей");
+    },
+    reset: ()=>{if(Core.bet>0){Core.bal+=Core.bet; Core.bet=0; Core.upd(); Bet.cleanSpots()}},
+    returnChip: (g)=>{ if(Core.bet>0){ Bet.reset(); } },
+    cleanSpots: ()=>{document.querySelectorAll('.bet-spot').forEach(e=>{e.innerHTML='<div class="spot-label">BET</div>'; e.classList.remove('active')})}
+};
+
+const Nav = {
+    to: (s)=>{
+        Bet.reset(); Av.stop();
+        document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));
+        document.getElementById('scr-'+s).classList.add('active');
+        if(s==='aviator') Av.init();
+        if(s==='slots') Sl.init();
+    },
+    menu: ()=>Nav.to('menu')
+};
+
+/* === CARDS (3D) === */
+const Deck = {
+    get: ()=>{const S=['♠','♥','♦','♣'],V=['2','3','4','5','6','7','8','9','10','J','Q','K','A'];let s=S[Math.floor(Math.random()*4)],v=V[Math.floor(Math.random()*13)],val=parseInt(v)||(v=='A'?11:10);return{s,v,val,r:V.indexOf(v),c:s=='♥'||s=='♦'?'red':'black'}},
+    deal: async (c,elId,flip=true)=>{
+        return new Promise(r=>{
+            let el=document.createElement('div'); el.className=`playing-card ${c.c}`;
+            if(c.hide) el.id='hidden-card';
+            el.innerHTML=`<div class="c-front"><div>${c.v}</div><div class="suit-lg">${c.s}</div></div><div class="c-back"></div>`;
+            document.getElementById(elId).appendChild(el);
+            setTimeout(()=>{
+                el.classList.add('dealt'); Snd.play('chip');
+                if(flip && !c.hide) setTimeout(()=>{el.classList.add('flipped');r()},300); else r();
+            },50);
+        });
+    }
+};
+
+/* === AVIATOR (CANVAS + GRAPH) === */
+const Av = {
+    ctx:null, w:0, h:0, state:'wait', mult:1.0, user:false, bots:['Alex','Bot1','Winner','Elon'],
+    init: ()=>{let c=document.getElementById('av-canvas');Av.ctx=c.getContext('2d');Av.w=c.width=c.clientWidth;Av.h=c.height=c.clientHeight;Av.round()},
+    stop: ()=>{cancelAnimationFrame(Av.raf)},
+    round: ()=>{
+        Av.state='wait'; let t=5.0; document.getElementById('av-list').innerHTML='';
+        let i=setInterval(()=>{
+            t-=0.1; document.getElementById('av-mult').innerText=t.toFixed(1)+'s';
+            if(Math.random()>.7) Av.botAdd(Av.bots[Math.floor(Math.random()*4)],Math.floor(Math.random()*500));
+            if(t<=0){clearInterval(i);Av.fly()}
+        },100);
+        document.getElementById('av-btn').innerText="СТАВКА"; document.getElementById('av-btn').disabled=false;
+    },
+    act: ()=>{
+        if(Av.state=='wait'){
+            if(Core.bet==0)return Core.toast("BET!"); Av.user=true; document.getElementById('av-btn').disabled=true;
+            Av.botAdd("YOU",Core.bet,true);
+        } else if(Av.state=='fly' && Av.user){
+            let w=Math.floor(Core.bet*Av.mult); Core.bal+=w; Core.bet=0; Core.upd(); Av.user=false;
+            Snd.play('win'); Core.toast(`+${w}`); document.getElementById('av-btn').innerText="WIN"; document.getElementById('av-btn').disabled=true;
+            document.querySelector('.bet-row.me').classList.add('cash');
+        }
+    },
+    fly: ()=>{
+        Av.state='fly'; Av.mult=1.0; let crash=1.0+Math.random()*5;
+        if(Av.user){let b=document.getElementById('av-btn'); b.disabled=false; b.innerText="ЗАБРАТИ"; b.style.background="var(--red)"}
+        (function l(){
+            if(Av.state!='fly')return;
+            Av.mult+=0.01; document.getElementById('av-mult').innerText=Av.mult.toFixed(2)+'x';
+            let ctx=Av.ctx, w=Av.w, h=Av.h;
+            ctx.fillStyle='#0b0b0d'; ctx.fillRect(0,0,w,h);
+            
+            // Grid
+            ctx.strokeStyle='#222'; ctx.lineWidth=1; ctx.beginPath();
+            for(let i=0;i<w;i+=50){ctx.moveTo(i,0);ctx.lineTo(i,h)} ctx.stroke();
+
+            // Curve
+            let x=Math.min(w-50,(Av.mult-1)*50), y=h-Math.min(h-50,(Av.mult-1)*40);
+            ctx.beginPath(); ctx.moveTo(0,h); ctx.quadraticCurveTo(x/2,h,x,y);
+            ctx.strokeStyle='#e74c3c'; ctx.lineWidth=4; ctx.stroke();
+            ctx.lineTo(x,h); ctx.fillStyle='rgba(231,76,60,0.2)'; ctx.fill();
+            
+            // Plane
+            ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+
+            if(Av.mult>=crash){
+                Av.state='crash'; document.getElementById('av-mult').style.color='red';
+                if(Av.user){Core.toast("LOST"); Core.bet=0; Core.upd(); Av.user=false;}
+                setTimeout(Av.round,3000);
+            } else Av.raf=requestAnimationFrame(l);
+        })();
+    },
+    botAdd: (n,b,me)=>{
+        let d=document.createElement('div'); d.className='bet-row '+(me?'me':'');
+        d.innerHTML=`<span>${n}</span><span>${b}</span>`; document.getElementById('av-list').prepend(d);
+    }
+};
+
+/* === SLOTS (CSS REEL STRIPS) === */
+const Sl = {
+    s:['🍒','🍋','7','💎','🔔'],
+    init: ()=>{[1,2,3].forEach(i=>document.getElementById('rs'+i).innerHTML=Sl.g(20))},
+    g: (n)=>{let h='';for(let i=0;i<n;i++)h+=`<div class="sym">${Sl.s[Math.floor(Math.random()*5)]}</div>`;return h},
+    spin: ()=>{
+        if(Core.bal<50)return Core.toast("50 ₴"); Core.bal-=50; Core.upd();
+        let r=[Math.floor(Math.random()*5),Math.floor(Math.random()*5),Math.floor(Math.random()*5)];
+        [1,2,3].forEach((id,i)=>{
+            let el=document.getElementById('rs'+id);
+            el.innerHTML=`<div class="sym">${Sl.s[r[i-1]]}</div>`+el.innerHTML;
+            el.style.top='-1400px'; el.style.transition='none';
+            setTimeout(()=>{el.style.transition=`top ${1+i*0.5}s ease-out`;el.style.top='0px'},50);
+            if(i==3) setTimeout(()=>{if(r[0]==r[1]&&r[1]==r[2]){Core.bal+=1000;Snd.play('win');Core.toast("JACKPOT")} Core.upd()},2500);
+        });
+    }
+};
+
+/* === BLACKJACK === */
+const BJ = {
+    p:[], d:[],
+    deal: async ()=>{
+        if(Core.bet==0)return Core.toast("BET!");
+        document.getElementById('bj-deal').style.display='none';
+        ['bj-ph','bj-dh'].forEach(i=>document.getElementById(i).innerHTML='');
+        BJ.p=[Deck.get(),Deck.get()]; BJ.d=[Deck.get(),Deck.get()]; BJ.d[1].hide=true;
+        await Deck.deal(BJ.p[0],'bj-ph'); await Deck.deal(BJ.d[0],'bj-dh');
+        await Deck.deal(BJ.p[1],'bj-ph'); await Deck.deal(BJ.d[1],'bj-dh',false);
+        BJ.upd(); document.getElementById('bj-acts').classList.remove('hidden');
+    },
+    hit: async ()=>{
+        BJ.p.push(Deck.get()); await Deck.deal(BJ.p[BJ.p.length-1],'bj-ph'); BJ.upd();
+        if(BJ.calc(BJ.p)>21) BJ.end(false);
+    },
+    stand: async ()=>{
+        document.getElementById('bj-acts').classList.add('hidden');
+        let h=document.getElementById('hidden-card'); h.classList.add('flipped');
+        while(BJ.calc(BJ.d)<17){ await new Promise(r=>setTimeout(r,600)); BJ.d.push(Deck.get()); await Deck.deal(BJ.d[BJ.d.length-1],'bj-dh'); BJ.upd(); }
+        let p=BJ.calc(BJ.p), d=BJ.calc(BJ.d);
+        if(d>21 || p>d) BJ.end(true); else if(p==d) BJ.end(null); else BJ.end(false);
+    },
+    calc: (h)=>{let s=h.reduce((a,b)=>a+b.val,0),a=h.filter(x=>x.v=='A').length;while(s>21&&a>0){s-=10;a--}return s},
+    upd: ()=>{
+        let ps=BJ.calc(BJ.p); let pe=document.getElementById('bj-ps'); pe.innerText=ps; 
+        pe.className='score-box '+(ps==21?'active':'');
+        document.getElementById('bj-ds').innerText=BJ.calc(BJ.d);
+    },
+    end: (w)=>{
+        if(w===true){Core.bal+=Core.bet*2;Snd.play('win');Core.toast("WIN")}
+        else if(w===null){Core.bal+=Core.bet;Core.toast("PUSH")}else Core.toast("LOSE");
+        Bet.reset(); setTimeout(()=>{document.getElementById('bj-deal').style.display='block';document.getElementById('bj-acts').classList.add('hidden')},2000);
+    }
+};
+
+/* === POKER === */
+const PK = {
+    p:[], d:[], t:[],
+    deal: async ()=>{
+        if(Core.bet==0)return Core.toast("BET!");
+        document.getElementById('pk-deal').style.display='none';
+        ['pk-ph','pk-dh','pk-th'].forEach(i=>document.getElementById(i).innerHTML='');
+        PK.p=[Deck.get(),Deck.get()]; PK.d=[Deck.get(),Deck.get()]; PK.t=[Deck.get(),Deck.get(),Deck.get(),Deck.get(),Deck.get()];
+        await Deck.deal(PK.p[0],'pk-ph'); await Deck.deal(PK.p[1],'pk-ph');
+        await Deck.deal(PK.t[0],'pk-th'); await Deck.deal(PK.t[1],'pk-th'); await Deck.deal(PK.t[2],'pk-th');
+        PK.eval(); document.getElementById('pk-acts').classList.remove('hidden');
+    },
+    eval: ()=>{
+        let h=[...PK.p, PK.t[0], PK.t[1], PK.t[2]];
+        let r=h.map(c=>c.r).sort((a,b)=>b-a), cnt={}; r.forEach(x=>cnt[x]=(cnt[x]||0)+1); let v=Object.values(cnt);
+        let t="High Card"; if(v.includes(2))t="Pair"; if(v.includes(3))t="Set";
+        let el=document.getElementById('pk-hint'); el.innerText=t; el.classList.add('active');
+    },
+    call: async ()=>{
+        if(Core.bal<Core.bet)return Core.toast("$$$"); Core.bal-=Core.bet; Core.bet*=2; Core.upd();
+        document.getElementById('pk-acts').classList.add('hidden');
+        await Deck.deal(PK.t[3],'pk-th'); await Deck.deal(PK.t[4],'pk-th');
+        await Deck.deal(PK.d[0],'pk-dh'); await Deck.deal(PK.d[1],'pk-dh');
+        let p=PK.p[0].val+PK.p[1].val, d=PK.d[0].val+PK.d[1].val;
+        if(p>d){Core.bal+=Core.bet*2; Snd.play('win'); Core.toast("WIN")} else Core.toast("LOSE");
+        Bet.reset(); setTimeout(()=>{document.getElementById('pk-deal').style.display='block'},2000);
+    },
+    fold: ()=>{Bet.reset(); document.getElementById('pk-acts').classList.add('hidden'); document.getElementById('pk-deal').style.display='block';}
+};
+
+/* === ROULETTE === */
+const Rl = {
+    sel: (c)=>{Rl.c=c; Core.toast(c)},
+    spin: ()=>{
+        if(Core.bet==0)return Core.toast("Bet!"); if(!Rl.c)return Core.toast("Color!");
+        let d=1440+Math.floor(Math.random()*360), w=document.getElementById('rl-wheel');
+        w.style.transform=`rotate(${d}deg)`;
+        setTimeout(()=>{
+            w.style.transition='none'; w.style.transform=`rotate(${d%360}deg)`; setTimeout(()=>w.style.transition='transform 4s cubic-bezier(0.1,0,0.1,1)',50);
+            if(Math.random()>.5) {Core.bal+=Core.bet*2; Snd.play('win'); Core.toast("WIN")} else Core.toast("LOSE");
+            Bet.reset();
+        },4000);
+    }
+};
+
+Core.init();
+</script>
+</body>
+</html>
